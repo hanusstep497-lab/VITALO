@@ -14,4 +14,17 @@ void main() {
 
     expect(find.text('Halo, kamu siap?'), findsOneWidget);
   });
+
+  testWidgets('Pindah tab ke Pengaturan menampilkan pengingat', (tester) async {
+    await tester.pumpWidget(const VitaloApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Masuk dengan Google'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Pengaturan'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pengingat aktif'), findsOneWidget);
+  });
 }
