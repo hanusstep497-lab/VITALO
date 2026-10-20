@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../state/app_state.dart';
 import '../theme.dart';
@@ -32,7 +33,7 @@ class SettingsScreen extends StatelessWidget {
 
   void _logout(BuildContext context) {
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const SplashLoginScreen()),
+      fadeRoute<void>(const SplashLoginScreen()),
       (route) => false,
     );
   }
@@ -45,11 +46,20 @@ class SettingsScreen extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         children: [
-          const Text('PENGINGAT & PROFIL', style: kLabelStyle),
-          const SizedBox(height: 4),
-          const Text('Pengaturan', style: kTitleStyle),
+          const Staggered(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('PENGINGAT & PROFIL', style: kLabelStyle),
+                SizedBox(height: 4),
+                Text('Pengaturan', style: kTitleStyle),
+              ],
+            ),
+          ),
           const SizedBox(height: 20),
-          VCard(
+          Staggered(
+            delay: const Duration(milliseconds: 100),
+            child: VCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -85,21 +95,35 @@ class SettingsScreen extends StatelessWidget {
               ],
             ),
           ),
+          ),
           const SizedBox(height: 20),
           const Text('Pengingat aktif', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: VColors.ink)),
           const SizedBox(height: 10),
-          for (final r in s.reminders) ...[
-            VCard(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: ListTile(
-                leading: Icon(r.icon, color: VColors.forest),
-                title: Text('${r.label} · ${fmtTime(r.time)}', style: const TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: const Text('Ketuk untuk ubah jam'),
-                onTap: () => _pickTime(context, s, r),
-                trailing: Switch(
-                  value: r.enabled,
-                  activeColor: VColors.teal,
-                  onChanged: (v) => s.setReminderEnabled(r, v),
+          for (var i = 0; i < s.reminders.length; i++) ...[
+            Staggered(
+              delay: Duration(milliseconds: 200 + i * 90),
+              child: VCard(
+                color: s.reminders[i].enabled ? Colors.white : const Color(0xFFE6E9E1),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: ListTile(
+                  leading: Icon(
+                    s.reminders[i].icon,
+                    color: s.reminders[i].enabled ? VColors.forest : VColors.muted,
+                  ),
+                  title: Text(
+                    '${s.reminders[i].label} · ${fmtTime(s.reminders[i].time)}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: const Text('Ketuk untuk ubah jam'),
+                  onTap: () => _pickTime(context, s, s.reminders[i]),
+                  trailing: Switch(
+                    value: s.reminders[i].enabled,
+                    activeColor: VColors.teal,
+                    onChanged: (v) {
+                      HapticFeedback.selectionClick();
+                      s.setReminderEnabled(s.reminders[i], v);
+                    },
+                  ),
                 ),
               ),
             ),

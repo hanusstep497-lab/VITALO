@@ -38,6 +38,9 @@ class AppState extends ChangeNotifier {
   final int improvement = 23;
   final List<double> weeklyScore = [0.55, 0.62, 0.48, 0.70, 0.66, 0.78, 0.85];
 
+  /// Badge yang sudah diraih (mis. 'Hidrasi Harian').
+  final Set<String> badges = {};
+
   final List<HabitItem> habits = [
     HabitItem('Minum air 8 gelas', Icons.water_drop_rounded),
     HabitItem('Berjalan 20 menit', Icons.directions_walk_rounded, done: true),
@@ -72,9 +75,19 @@ class AppState extends ChangeNotifier {
   }
 
   // --- Aksi ---
-  void addWater(int glasses) {
+  /// Mengembalikan true jika penambahan ini membuat target air baru tercapai.
+  bool addWater(int glasses) {
+    final before = waterGlasses;
     waterGlasses += glasses;
+    final reached = before < waterTarget && waterGlasses >= waterTarget;
+    if (reached) {
+      badges.add('Hidrasi Harian');
+      for (final h in habits) {
+        if (h.title.startsWith('Minum air')) h.done = true;
+      }
+    }
     notifyListeners();
+    return reached;
   }
 
   void saveSleep(Duration duration, int quality) {
