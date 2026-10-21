@@ -18,9 +18,9 @@ Screenshot diambil dari emulator/perangkat dan disimpan di `docs/screenshots/`.
 
 | 01 Splash & Login | 02 Home Dashboard | 03 Tambah Catatan |
 | :---: | :---: | :---: |
-| ![Login](docs/screenshots/01_login.png) | ![Home](docs/screenshots/02_home.png) | ![Tambah Catatan](docs/screenshots/03_tambah_catatan.png) |
+| ![Login](docs/screenshots/01_login.png) | ![Home](docs/screenshots/02_home.png) | ![Pengaturan](docs/screenshots/03_tambah_catatan.png) |
 
-| 04 Pelacak Kebiasaan | 05 Insight Progres | 06 Pengingat & Profil |
+| 04 Insight Progres | 05 Pelacak Kebiasaan | 06 Pengingat & Profil |
 | :---: | :---: | :---: |
 | ![Kebiasaan](docs/screenshots/04_kebiasaan.png) | ![Insight](docs/screenshots/05_insight.png) | ![Pengaturan](docs/screenshots/06_pengaturan.png) |
 
