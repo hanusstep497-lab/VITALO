@@ -14,6 +14,9 @@ import '../../theme/app_spacing.dart';
 ///   1.850 - 2.290 ms  kartu "Ringkasan hari ini": fade + slide
 ///   1.950 - 2.390 ms  chip streak & konsistensi: fade + slide
 /// Ketuk layar saat splash = lewati animasi.
+///
+/// Masuk dengan email tanpa backend: email apa pun yang tidak kosong
+/// langsung membawa ke halaman utama dengan transisi fade.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -105,10 +108,28 @@ class _LoginScreenState extends State<LoginScreen>
   bool get _panelInteractive =>
       _controller.value >= _panelDelay.inMilliseconds / _total.inMilliseconds;
 
+  /// Masuk ke halaman utama (AppShell) dengan transisi fade halus.
+  /// Tetap memakai builder dari `AppRoutes.routes` agar kontrak route utuh.
   void _enter() {
     if (_navigating) return;
     _navigating = true;
-    Navigator.pushReplacementNamed(context, AppRoutes.shell);
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    final duration = reduce ? Duration.zero : AppMotion.slow;
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder<void>(
+        settings: const RouteSettings(name: AppRoutes.shell),
+        transitionDuration: duration,
+        reverseTransitionDuration: duration,
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            AppRoutes.routes[AppRoutes.shell]!(context),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+            FadeTransition(
+          opacity: CurvedAnimation(parent: animation, curve: AppMotion.curve),
+          child: child,
+        ),
+      ),
+    );
   }
 
   /// Sheet input email. Email apa pun diterima (tanpa backend), lalu masuk.
@@ -138,7 +159,12 @@ class _LoginScreenState extends State<LoginScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [cs.primary, Color.lerp(cs.primary, cs.tertiary, 0.55)!],
+            colors: [
+              cs.primary,
+              Color.lerp(cs.primary, cs.tertiary, 0.45)!,
+              cs.tertiary,
+            ],
+            stops: const [0, 0.55, 1],
           ),
         ),
         child: GestureDetector(
@@ -225,10 +251,7 @@ class _LoginScreenState extends State<LoginScreen>
                         opacity: _panelFade,
                         child: SlideTransition(
                           position: _panelSlide,
-                          child: _LoginPanel(
-                            onGoogle: _enter,
-                            onEmail: _openEmailSheet,
-                          ),
+                          child: _LoginPanel(onEmail: _openEmailSheet),
                         ),
                       ),
                     ),
@@ -243,7 +266,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 }
 
-/// Lingkaran dekoratif lembut di latar.
+/// Lingkaran + gelembung ikon dekoratif di latar (statis, tidak berulang).
 class _Decoration extends StatelessWidget {
   const _Decoration({required this.fade});
 
@@ -252,6 +275,8 @@ class _Decoration extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme.onPrimary;
+    final safeTop = MediaQuery.paddingOf(context).top;
+
     Widget circle(double size, double alpha) => Container(
           width: size,
           height: size,
@@ -260,15 +285,44 @@ class _Decoration extends StatelessWidget {
             color: c.withValues(alpha: alpha),
           ),
         );
+
+    // Gelembung ikon: tidur, air, gerak (tiga pilar Vitalo).
+    Widget bubble(IconData icon, double size, double angle) => Transform.rotate(
+          angle: angle,
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: c.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(size * 0.32),
+              border: Border.all(color: c.withValues(alpha: 0.18)),
+            ),
+            child: Icon(icon, size: size * 0.5, color: c.withValues(alpha: 0.75)),
+          ),
+        );
+
     return FadeTransition(
       opacity: fade,
       child: Stack(
         children: [
           Positioned(top: -80, right: -70, child: circle(240, 0.08)),
-          Positioned(top: 150, left: -60, child: circle(120, 0.06)),
-          Positioned(top: 60, left: 40, child: circle(14, 0.14)),
-          Positioned(top: 110, right: 50, child: circle(22, 0.12)),
+          Positioned(top: 190, left: -60, child: circle(120, 0.06)),
           Positioned(bottom: 260, right: -40, child: circle(100, 0.06)),
+          Positioned(
+            top: safeTop + 24,
+            left: 24,
+            child: bubble(Icons.water_drop_rounded, 40, -0.2),
+          ),
+          Positioned(
+            top: safeTop + 32,
+            right: 28,
+            child: bubble(Icons.directions_walk_rounded, 36, 0.2),
+          ),
+          Positioned(
+            top: safeTop + 96,
+            left: 12,
+            child: bubble(Icons.bedtime_rounded, 28, 0.15),
+          ),
         ],
       ),
     );
@@ -303,19 +357,37 @@ class _LogoBlock extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 88,
-                    height: 88,
-                    decoration: BoxDecoration(
-                      color: cs.onPrimary.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(
-                        color: cs.onPrimary.withValues(alpha: 0.28),
+                  // Cincin glow lembut di belakang kotak logo.
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: cs.onPrimary.withValues(alpha: 0.10),
+                        ),
                       ),
-                    ),
-                    child: Icon(Icons.spa_rounded, size: 48, color: cs.onPrimary),
+                      Container(
+                        width: 88,
+                        height: 88,
+                        decoration: BoxDecoration(
+                          color: cs.onPrimary.withValues(alpha: 0.20),
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(
+                            color: cs.onPrimary.withValues(alpha: 0.32),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.spa_rounded,
+                          size: 48,
+                          color: cs.onPrimary,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.sm),
                   Text(
                     'Vitalo',
                     style: text.displaySmall?.copyWith(
@@ -543,15 +615,17 @@ class _InfoChip extends StatelessWidget {
 }
 
 class _LoginPanel extends StatelessWidget {
-  const _LoginPanel({required this.onGoogle, required this.onEmail});
+  const _LoginPanel({required this.onEmail});
 
-  final VoidCallback onGoogle;
   final VoidCallback onEmail;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final buttonShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+    );
 
     return Container(
       width: double.infinity,
@@ -569,7 +643,12 @@ class _LoginPanel extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.sm + 4,
+            AppSpacing.lg,
+            AppSpacing.lg,
+          ),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
@@ -577,62 +656,44 @@ class _LoginPanel extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Pegangan kecil khas bottom panel.
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: cs.outlineVariant,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
                   Text(
                     'Selamat datang',
                     textAlign: TextAlign.center,
-                    style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _PressScale(
-                    child: FilledButton.icon(
-                      onPressed: onGoogle,
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(54),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      icon: const Icon(Icons.g_mobiledata_rounded, size: 30),
-                      label: const Text('Masuk dengan Google'),
+                    style: text.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    children: [
-                      const Expanded(child: Divider()),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md,
-                        ),
-                        child: Text(
-                          'atau',
-                          style: text.labelSmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      const Expanded(child: Divider()),
-                    ],
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Mulai catat kebiasaanmu hari ini.',
+                    textAlign: TextAlign.center,
+                    style: text.bodyMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
                   ),
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: AppSpacing.lg),
                   _PressScale(
-                    child: OutlinedButton.icon(
+                    child: FilledButton.icon(
                       onPressed: onEmail,
-                      style: OutlinedButton.styleFrom(
+                      style: FilledButton.styleFrom(
                         minimumSize: const Size.fromHeight(54),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
+                        shape: buttonShape,
                       ),
                       icon: const Icon(Icons.mail_outline_rounded),
                       label: const Text('Masuk dengan email'),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    'Mulai catat kebiasaanmu hari ini',
-                    textAlign: TextAlign.center,
-                    style: text.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -644,7 +705,8 @@ class _LoginPanel extends StatelessWidget {
   }
 }
 
-/// Bottom sheet input email. Tanpa validasi/backend: teks apa pun diterima.
+/// Bottom sheet masuk dengan email. Tanpa backend: teks apa pun diterima
+/// (tidak ada validasi format), hanya tidak boleh kosong.
 class _EmailSheet extends StatefulWidget {
   const _EmailSheet();
 
@@ -654,6 +716,7 @@ class _EmailSheet extends StatefulWidget {
 
 class _EmailSheetState extends State<_EmailSheet> {
   final _email = TextEditingController();
+  String? _error;
 
   @override
   void dispose() {
@@ -661,7 +724,14 @@ class _EmailSheetState extends State<_EmailSheet> {
     super.dispose();
   }
 
-  void _submit() => Navigator.pop(context, _email.text.trim());
+  void _submit() {
+    final email = _email.text.trim();
+    if (email.isEmpty) {
+      setState(() => _error = 'Isi emailmu dulu ya');
+      return;
+    }
+    Navigator.pop(context, email);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -682,26 +752,51 @@ class _EmailSheetState extends State<_EmailSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Center(
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: cs.primaryContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.mark_email_unread_rounded,
+                  size: 28,
+                  color: cs.onPrimaryContainer,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
             Text(
               'Masuk dengan email',
-              style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              textAlign: TextAlign.center,
+              style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Masukkan emailmu untuk mulai mencatat kebiasaan.',
+              'Masukkan emailmu untuk melanjutkan.',
+              textAlign: TextAlign.center,
               style: text.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.lg),
             TextField(
               controller: _email,
               autofocus: true,
               keyboardType: TextInputType.emailAddress,
+              autofillHints: const [AutofillHints.email],
               textInputAction: TextInputAction.done,
+              onChanged: (_) {
+                if (_error != null) setState(() => _error = null);
+              },
               onSubmitted: (_) => _submit(),
               decoration: InputDecoration(
                 labelText: 'Email',
                 hintText: 'nama@email.com',
-                prefixIcon: const Icon(Icons.mail_outline_rounded),
+                errorText: _error,
+                filled: true,
+                fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+                prefixIcon: const Icon(Icons.alternate_email_rounded),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
@@ -709,16 +804,24 @@ class _EmailSheetState extends State<_EmailSheet> {
             ),
             const SizedBox(height: AppSpacing.md),
             _PressScale(
-              child: FilledButton(
+              child: FilledButton.icon(
                 onPressed: _submit,
+                iconAlignment: IconAlignment.end,
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(54),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                child: const Text('Lanjut'),
+                icon: const Icon(Icons.arrow_forward_rounded),
+                label: const Text('Masuk'),
               ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Mode demo: email apa pun bisa dipakai.',
+              textAlign: TextAlign.center,
+              style: text.labelSmall?.copyWith(color: cs.onSurfaceVariant),
             ),
           ],
         ),

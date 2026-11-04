@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../app/routes.dart';
@@ -116,70 +118,93 @@ class HomeScreen extends StatelessWidget {
           const _HeaderImage(asset: _headerAsset, semanticLabel: _headerLabel),
           const SizedBox(height: AppSpacing.md),
 
-          // 4. Ringkasan tiga kebiasaan (angka count-up satu kali).
-          _CountUp(
-            end: DummyData.waterGlasses,
-            builder: (context, value) => Semantics(
-              container: true,
-              excludeSemantics: true,
-              label: 'Air minum, ${DummyData.waterGlasses} dari '
-                  '${DummyData.waterTarget} gelas',
-              child: StatCard(
-                title: 'Air minum',
-                value: '$value',
-                unit: '/ ${DummyData.waterTarget} gelas',
-                icon: Icons.water_drop_rounded,
-                progress: DummyData.waterGlasses / DummyData.waterTarget,
-              ),
+          // 4. Ringkasan tiga kebiasaan. Angka dan progress terisi bergiliran
+          // (air -> tidur -> langkah) setelah transisi masuk dari login
+          // selesai, supaya animasinya benar-benar terlihat.
+          _StagedProgress(
+            builder: (context, stage) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _CountUp(
+                  end: stage >= 1 ? DummyData.waterGlasses : 0,
+                  builder: (context, value) => Semantics(
+                    container: true,
+                    excludeSemantics: true,
+                    label: 'Air minum, ${DummyData.waterGlasses} dari '
+                        '${DummyData.waterTarget} gelas',
+                    child: StatCard(
+                      title: 'Air minum',
+                      value: '$value',
+                      unit: '/ ${DummyData.waterTarget} gelas',
+                      icon: Icons.water_drop_rounded,
+                      progress: stage >= 1
+                          ? DummyData.waterGlasses / DummyData.waterTarget
+                          : 0,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _CountUp(
+                        end: stage >= 2 ? DummyData.sleepMinutes : 0,
+                        builder: (context, minutes) => Semantics(
+                          container: true,
+                          excludeSemantics: true,
+                          label: 'Tidur semalam, '
+                              '${_formatSleep(DummyData.sleepMinutes)}',
+                          child: StatCard(
+                            title: 'Tidur',
+                            value: _formatSleep(minutes),
+                            unit: 'semalam',
+                            icon: Icons.bedtime_rounded,
+                            progress: stage >= 2
+                                ? DummyData.sleepMinutes / _sleepTargetMinutes
+                                : 0,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: _CountUp(
+                        end: stage >= 3 ? DummyData.steps : 0,
+                        builder: (context, steps) => Semantics(
+                          container: true,
+                          excludeSemantics: true,
+                          label: 'Aktivitas, '
+                              '${_formatThousands(DummyData.steps)} langkah',
+                          child: StatCard(
+                            title: 'Aktivitas',
+                            value: _formatThousands(steps),
+                            unit: 'langkah',
+                            icon: Icons.directions_walk_rounded,
+                            progress: stage >= 3
+                                ? DummyData.steps / DummyData.stepTarget
+                                : 0,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                // Kalimat target muncul (fade) setelah kartu air mulai terisi.
+                AnimatedOpacity(
+                  opacity: stage >= 1 ? 1 : 0,
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : AppMotion.slow,
+                  curve: AppMotion.curve,
+                  child: _TargetSummary(
+                    glasses: DummyData.waterGlasses,
+                    target: DummyData.waterTarget,
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _CountUp(
-                  end: DummyData.sleepMinutes,
-                  builder: (context, minutes) => Semantics(
-                    container: true,
-                    excludeSemantics: true,
-                    label: 'Tidur semalam, '
-                        '${_formatSleep(DummyData.sleepMinutes)}',
-                    child: StatCard(
-                      title: 'Tidur',
-                      value: _formatSleep(minutes),
-                      unit: 'semalam',
-                      icon: Icons.bedtime_rounded,
-                      progress: DummyData.sleepMinutes / _sleepTargetMinutes,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: _CountUp(
-                  end: DummyData.steps,
-                  builder: (context, steps) => Semantics(
-                    container: true,
-                    excludeSemantics: true,
-                    label: 'Aktivitas, '
-                        '${_formatThousands(DummyData.steps)} langkah',
-                    child: StatCard(
-                      title: 'Aktivitas',
-                      value: _formatThousands(steps),
-                      unit: 'langkah',
-                      icon: Icons.directions_walk_rounded,
-                      progress: DummyData.steps / DummyData.stepTarget,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _TargetSummary(
-            glasses: DummyData.waterGlasses,
-            target: DummyData.waterTarget,
           ),
           const SizedBox(height: AppSpacing.lg),
 
@@ -219,6 +244,77 @@ class _FadeIn extends StatelessWidget {
       child: child,
     );
   }
+}
+
+/// Mengatur tahap animasi progress di Home: 0 = kosong, 1 = air, 2 = tidur,
+/// 3 = langkah. Tahap baru dimulai setelah animasi transisi route (fade dari
+/// layar login) selesai, lalu naik satu tahap tiap 160 ms. Hanya berjalan
+/// sekali saat Home pertama dibuat, jadi tidak berulang. Jika animasi sistem
+/// dimatikan, semua tahap langsung penuh.
+class _StagedProgress extends StatefulWidget {
+  const _StagedProgress({required this.builder});
+
+  final Widget Function(BuildContext context, int stage) builder;
+
+  @override
+  State<_StagedProgress> createState() => _StagedProgressState();
+}
+
+class _StagedProgressState extends State<_StagedProgress> {
+  static const int _lastStage = 3;
+  static const Duration _gap = Duration(milliseconds: 160);
+
+  int _stage = 0;
+  bool _started = false;
+  Timer? _timer;
+  Animation<double>? _routeAnimation;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _stage = _lastStage;
+      return;
+    }
+
+    final animation = ModalRoute.of(context)?.animation;
+    if (animation == null || animation.status == AnimationStatus.completed) {
+      _begin();
+    } else {
+      _routeAnimation = animation..addStatusListener(_onRouteStatus);
+    }
+  }
+
+  void _onRouteStatus(AnimationStatus status) {
+    if (status != AnimationStatus.completed) return;
+    _routeAnimation?.removeStatusListener(_onRouteStatus);
+    _routeAnimation = null;
+    _begin();
+  }
+
+  void _begin() {
+    _timer = Timer.periodic(_gap, (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() => _stage++);
+      if (_stage >= _lastStage) timer.cancel();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _routeAnimation?.removeStatusListener(_onRouteStatus);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _stage);
 }
 
 /// Menghitung naik dari 0 ke [end] satu kali saat pertama tampil. Karena
