@@ -231,7 +231,6 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                     '$_glasses',
                     key: ValueKey<int>(_glasses),
                     style: text.displayLarge?.copyWith(
-                      fontSize: 96,
                       fontWeight: FontWeight.w700,
                       color: scheme.onPrimaryContainer,
                     ),
