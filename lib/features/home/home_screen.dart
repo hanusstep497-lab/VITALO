@@ -53,7 +53,7 @@ class HomeScreen extends StatelessWidget {
   // Buka layar tambah catatan; tampilkan SnackBar jika hasilnya true
   // (perilaku yang sama dengan tombol FAB "Catat" di AppShell).
   Future<void> _openAddEntry(BuildContext context) async {
-    final saved = await Navigator.pushNamed<bool>(context, AppRoutes.addEntry);
+    final saved = await Navigator.pushNamed(context, AppRoutes.addEntry);
     if (!context.mounted || saved != true) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()

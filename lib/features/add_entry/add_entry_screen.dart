@@ -4,20 +4,19 @@ import '../../theme/app_motion.dart';
 import '../../theme/app_spacing.dart';
 
 // ---------------------------------------------------------------------------
-// Konstanta ukuran (di luar AppSpacing karena bukan "jarak", melainkan ukuran
-// komponen). Semua target sentuh >= 48 dp.
+// Konstanta ukuran komponen (bukan "jarak", jadi di luar AppSpacing).
+// Semua target sentuh >= 48 dp.
 // ---------------------------------------------------------------------------
-const double _bigTap = 56; // tombol - / + stepper
+const double _tapSize = 48; // tinggi tab & tombol - / +
 const double _saveHeight = 56; // tombol "Simpan catatan"
 const double _quickAddHeight = 64; // tombol "+1 gelas"
-const double _radius = 24; // sudut panel & kartu pilihan
+const double _radius = 16; // sudut panel & kartu pilihan
 const double _contentMaxWidth = 480; // batas lebar konten di layar lebar
 
-const double _sleepPanelHeight = 176;
-const double _waterPanelHeight = 240;
-const double _activityPanelHeight = 136;
-const double _choiceHeight = 96;
-const double _gridChoiceHeight = 88;
+const double _sleepPanelHeight = 160;
+const double _waterPanelHeight = 220;
+const double _activityPanelHeight = 120;
+const double _choiceHeight = 56;
 
 // Batas & langkah nilai.
 const int _sleepStep = 15; // menit
@@ -28,16 +27,13 @@ const int _activityMax = 300;
 const int _glassMax = 20;
 
 class _Option {
-  const _Option(this.label, this.icon);
+  const _Option(this.label, [this.icon]);
   final String label;
-  final IconData icon;
+  final IconData? icon;
 }
 
-const _qualities = [
-  _Option('Kurang', Icons.sentiment_dissatisfied_rounded),
-  _Option('Cukup', Icons.sentiment_neutral_rounded),
-  _Option('Nyenyak', Icons.sentiment_very_satisfied_rounded),
-];
+// Kualitas tidur: teks saja, seperti mockup proposal.
+const _qualities = [_Option('Kurang'), _Option('Cukup'), _Option('Nyenyak')];
 
 const _activities = [
   _Option('Jalan', Icons.directions_walk_rounded),
@@ -48,10 +44,9 @@ const _activities = [
 
 /// Layar 03 - Tambah Catatan. Tiga tab cepat: Tidur | Air | Aktivitas.
 ///
-/// State bersifat lokal (setState) dan sengaja berada di State layar ini
-/// (bukan di tiap tab) supaya nilai tidak hilang ketika pengguna berpindah
-/// tab. Data tidak disimpan ke mana pun; "Simpan catatan" hanya menutup
-/// layar dengan hasil `true`.
+/// State lokal (setState) dipegang di sini supaya nilai tidak hilang saat
+/// pindah tab. Data tidak disimpan; "Simpan catatan" menutup layar dengan
+/// hasil `true`.
 class AddEntryScreen extends StatefulWidget {
   const AddEntryScreen({super.key});
 
@@ -61,9 +56,9 @@ class AddEntryScreen extends StatefulWidget {
 
 class _AddEntryScreenState extends State<AddEntryScreen> {
   int _sleepMinutes = 7 * 60 + 20; // 7j 20m, sesuai proposal
-  int _quality = 1; // indeks _qualities; "Cukup" sebagai default
+  int _quality = 1; // "Cukup" sebagai default
   int _glasses = 0;
-  int _activityType = 0; // indeks _activities
+  int _activityType = 0;
   int _activityMinutes = 30;
 
   static int _clampInt(int v, int lo, int hi) => v < lo ? lo : (v > hi ? hi : v);
@@ -101,18 +96,21 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
             onPressed: () => Navigator.pop(context),
           ),
           title: const Text('Tambah catatan'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Tidur'),
-              Tab(text: 'Air'),
-              Tab(text: 'Aktivitas'),
-            ],
-          ),
         ),
-        // Satu-satunya Column "struktural": isi tab (Expanded) di atas,
-        // tombol simpan menempel di bawah.
+        // Column struktural: tab di atas, isi di tengah, tombol simpan di bawah.
         body: Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: _contentMaxWidth),
+                  child: const _PillTabBar(),
+                ),
+              ),
+            ),
             Expanded(
               child: TabBarView(
                 children: [
@@ -176,7 +174,6 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                 child: _ChoiceCard(
                   option: _qualities[i],
                   selected: _quality == i,
-                  minHeight: _choiceHeight,
                   duration: anim,
                   onTap: () => setState(() => _quality = i),
                 ),
@@ -199,10 +196,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
       children: [
         Container(
           height: _waterPanelHeight,
-          decoration: BoxDecoration(
-            color: scheme.primaryContainer,
-            borderRadius: BorderRadius.circular(_radius),
-          ),
+          decoration: _panelDecoration(scheme),
           child: Stack(
             children: [
               Align(
@@ -212,12 +206,11 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                   child: Text(
                     'Minum kali ini',
                     style: text.titleMedium
-                        ?.copyWith(color: scheme.onPrimaryContainer),
+                        ?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                 ),
               ),
-              // Angka besar tepat di tengah panel; berganti dengan
-              // fade + scale setiap kali bertambah/berkurang.
+              // Angka besar tepat di tengah; berganti dengan fade + scale.
               Center(
                 child: AnimatedSwitcher(
                   duration: anim,
@@ -231,8 +224,8 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                     '$_glasses',
                     key: ValueKey<int>(_glasses),
                     style: text.displayLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w800,
+                      color: scheme.onSurface,
                     ),
                   ),
                 ),
@@ -244,7 +237,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                   child: Text(
                     'gelas',
                     style: text.titleLarge
-                        ?.copyWith(color: scheme.onPrimaryContainer),
+                        ?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                 ),
               ),
@@ -253,12 +246,12 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                 alignment: Alignment.topRight,
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.sm),
-                  child: IconButton.filledTonal(
+                  child: IconButton.outlined(
                     onPressed: _glasses > 0 ? () => _stepGlasses(-1) : null,
                     tooltip: 'Kurangi 1 gelas',
                     icon: const Icon(Icons.remove_rounded),
                     style: IconButton.styleFrom(
-                      fixedSize: const Size.square(_bigTap),
+                      fixedSize: const Size.square(_tapSize),
                     ),
                   ),
                 ),
@@ -296,14 +289,13 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
             crossAxisCount: 2,
             mainAxisSpacing: AppSpacing.sm,
             crossAxisSpacing: AppSpacing.sm,
-            mainAxisExtent: _gridChoiceHeight,
+            mainAxisExtent: _choiceHeight,
           ),
           children: [
             for (var i = 0; i < _activities.length; i++)
               _ChoiceCard(
                 option: _activities[i],
                 selected: _activityType == i,
-                minHeight: _gridChoiceHeight,
                 duration: anim,
                 onTap: () => setState(() => _activityType = i),
               ),
@@ -330,8 +322,45 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
 }
 
 // ===========================================================================
-// Widget privat
+// Widget & helper privat
 // ===========================================================================
+
+/// Dekorasi panel datar: latar permukaan + garis tepi tipis (gaya mockup).
+BoxDecoration _panelDecoration(ColorScheme scheme) => BoxDecoration(
+      color: scheme.surface,
+      borderRadius: BorderRadius.circular(_radius),
+      border: Border.all(color: scheme.outlineVariant),
+    );
+
+/// TabBar bergaya pil: tab terpilih terisi warna primer (seperti mockup).
+class _PillTabBar extends StatelessWidget {
+  const _PillTabBar();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+
+    return TabBar(
+      dividerColor: Colors.transparent,
+      indicatorSize: TabBarIndicatorSize.tab,
+      indicator: BoxDecoration(
+        color: scheme.primary,
+        borderRadius: BorderRadius.circular(_radius),
+      ),
+      labelColor: scheme.onPrimary,
+      unselectedLabelColor: scheme.onSurface,
+      labelStyle: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+      unselectedLabelStyle: text.titleSmall,
+      splashBorderRadius: BorderRadius.circular(_radius),
+      tabs: const [
+        Tab(height: _tapSize, text: 'Tidur'),
+        Tab(height: _tapSize, text: 'Air'),
+        Tab(height: _tapSize, text: 'Aktivitas'),
+      ],
+    );
+  }
+}
 
 /// Kerangka satu halaman tab: scroll (jaga-jaga layar pendek), padding
 /// seragam, konten dibatasi lebarnya dan ditempel di atas-tengah.
@@ -376,9 +405,9 @@ class _Heading extends StatelessWidget {
   }
 }
 
-/// Panel berdekorasi: nilai besar di tengah, tombol - di kiri, + di kanan.
-/// Disusun dengan Stack + Align/Center (bukan Row) agar nilai selalu tepat
-/// di tengah berapa pun lebar tombolnya.
+/// Panel: nilai besar tebal di tengah, tombol - di kiri, + di kanan.
+/// Memakai Stack + Align/Center (bukan Row) agar nilai selalu tepat di
+/// tengah berapa pun lebar tombolnya.
 class _StepperPanel extends StatelessWidget {
   const _StepperPanel({
     required this.caption,
@@ -401,31 +430,18 @@ class _StepperPanel extends StatelessWidget {
   final VoidCallback? onPlus;
 
   // Ruang kiri/kanan agar teks tidak menabrak tombol.
-  static const double _inset = _bigTap + AppSpacing.sm * 2;
-
-  Widget _stepButton(IconData icon, String tooltip, VoidCallback? onPressed) {
-    return IconButton.filled(
-      onPressed: onPressed,
-      tooltip: tooltip,
-      icon: Icon(icon),
-      iconSize: 28,
-      style: IconButton.styleFrom(fixedSize: const Size.square(_bigTap)),
-    );
-  }
+  static const double _inset = _tapSize + AppSpacing.sm * 2;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final valueStyle = (large ? text.displayMedium : text.headlineLarge)
-        ?.copyWith(color: scheme.onPrimaryContainer, fontWeight: FontWeight.w700);
+        ?.copyWith(color: scheme.onSurface, fontWeight: FontWeight.w800);
 
     return Container(
       height: height,
-      decoration: BoxDecoration(
-        color: scheme.primaryContainer,
-        borderRadius: BorderRadius.circular(_radius),
-      ),
+      decoration: _panelDecoration(scheme),
       child: Stack(
         children: [
           Align(
@@ -435,7 +451,7 @@ class _StepperPanel extends StatelessWidget {
               child: Text(
                 caption,
                 style:
-                    text.titleMedium?.copyWith(color: scheme.onPrimaryContainer),
+                    text.titleMedium?.copyWith(color: scheme.onSurfaceVariant),
               ),
             ),
           ),
@@ -452,14 +468,26 @@ class _StepperPanel extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Padding(
               padding: const EdgeInsets.only(left: AppSpacing.sm),
-              child: _stepButton(Icons.remove_rounded, minusTooltip, onMinus),
+              child: IconButton.filled(
+                onPressed: onMinus,
+                tooltip: minusTooltip,
+                icon: const Icon(Icons.remove_rounded),
+                style: IconButton.styleFrom(
+                    fixedSize: const Size.square(_tapSize)),
+              ),
             ),
           ),
           Align(
             alignment: Alignment.centerRight,
             child: Padding(
               padding: const EdgeInsets.only(right: AppSpacing.sm),
-              child: _stepButton(Icons.add_rounded, plusTooltip, onPlus),
+              child: IconButton.filled(
+                onPressed: onPlus,
+                tooltip: plusTooltip,
+                icon: const Icon(Icons.add_rounded),
+                style: IconButton.styleFrom(
+                    fixedSize: const Size.square(_tapSize)),
+              ),
             ),
           ),
         ],
@@ -468,20 +496,18 @@ class _StepperPanel extends StatelessWidget {
   }
 }
 
-/// Kartu pilihan besar. Gaya (warna, border) beranimasi lewat
-/// AnimatedContainer saat [selected] berubah.
+/// Kartu pilihan besar. Warna & border beranimasi lewat AnimatedContainer
+/// saat [selected] berubah; terpilih = terisi warna primer (seperti mockup).
 class _ChoiceCard extends StatelessWidget {
   const _ChoiceCard({
     required this.option,
     required this.selected,
-    required this.minHeight,
     required this.duration,
     required this.onTap,
   });
 
   final _Option option;
   final bool selected;
-  final double minHeight;
   final Duration duration;
   final VoidCallback onTap;
 
@@ -489,7 +515,8 @@ class _ChoiceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final fg = selected ? scheme.onPrimaryContainer : scheme.onSurfaceVariant;
+    final fg = selected ? scheme.onPrimary : scheme.onSurface;
+    final icon = option.icon;
 
     return Semantics(
       button: true,
@@ -500,30 +527,31 @@ class _ChoiceCard extends StatelessWidget {
         child: AnimatedContainer(
           duration: duration,
           curve: AppMotion.curve,
-          constraints: BoxConstraints(minHeight: minHeight),
+          constraints: const BoxConstraints(minHeight: _choiceHeight),
           alignment: Alignment.center,
-          padding: const EdgeInsets.all(AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
           decoration: BoxDecoration(
-            color: selected
-                ? scheme.primaryContainer
-                : scheme.surfaceContainerHighest,
+            color: selected ? scheme.primary : scheme.surface,
             borderRadius: BorderRadius.circular(_radius),
-            // Lebar border tetap 2 dp agar ukuran kartu tidak melompat.
             border: Border.all(
-              color: selected ? scheme.primary : Colors.transparent,
-              width: 2,
+              color: selected ? scheme.primary : scheme.outlineVariant,
             ),
           ),
-          child: Column(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(option.icon, size: 32, color: fg),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                option.label,
-                style: text.titleMedium?.copyWith(
-                  color: fg,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              if (icon != null) ...[
+                Icon(icon, color: fg),
+                const SizedBox(width: AppSpacing.sm),
+              ],
+              Flexible(
+                child: Text(
+                  option.label,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.titleMedium?.copyWith(
+                    color: fg,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
                 ),
               ),
             ],

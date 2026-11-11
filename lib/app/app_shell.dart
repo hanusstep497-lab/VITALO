@@ -36,7 +36,7 @@ class _AppShellState extends State<AppShell> {
 
   // Buka layar tambah catatan; tampilkan SnackBar jika hasilnya true.
   Future<void> _openAddEntry() async {
-    final saved = await Navigator.pushNamed<bool>(context, AppRoutes.addEntry);
+    final saved = await Navigator.pushNamed(context, AppRoutes.addEntry);
     if (!mounted || saved != true) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
